@@ -1,1 +1,1 @@
-# COLA_Code_Release
+# COLA_Core
