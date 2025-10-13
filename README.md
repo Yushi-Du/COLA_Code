@@ -3,6 +3,8 @@
 [![arxiv](https://img.shields.io/badge/arXiv%202506.08931-red?logo=arxiv)](https://arxiv.org/)
 [![website](https://img.shields.io/badge/Project-0065D3?logo=rocket&logoColor=white)](https://yushi-du.github.io/COLA/)
 
+![Logo](images/teaser.pdf)
+
 ## Release Timeline / Roadmap
 
 ### 📅 Upcoming
