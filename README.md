@@ -18,7 +18,7 @@
 ⭐ Star this repository to get notified when code is released!
 
 ## Citation
-If you are interested in using our work, please cite:
+📚 If you are interested in using our work, please cite:
 
 ```
 @misc{du2025learninghumanhumanoidcoordinationcollaborative,
