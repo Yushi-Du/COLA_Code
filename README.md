@@ -5,7 +5,7 @@
 
 ![Logo](images/teaser.png)
 
-## Release Timeline / Roadmap
+## Roadmap
 
 ### 📅 Upcoming
 - Code release for the core method
