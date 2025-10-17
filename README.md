@@ -8,8 +8,8 @@
 ## Release Timeline / Roadmap
 
 ### 📅 Upcoming
-- **December 2025**: Release code for the core method
-- **January 2026**: Release whole sim2sim pipeline
+- Code release for the core method
+- Code release whole sim2sim pipeline
 
 ## Current Status
 🚧 **Work in Progress** - We are currently preparing the code for public release following our paper submission. Stay tuned for updates!
