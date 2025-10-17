@@ -16,3 +16,18 @@
 
 ## Get Notified
 ⭐ Star this repository to get notified when code is released!
+
+## Citation
+If you are interested in using our work, please cite:
+
+```
+@misc{du2025learninghumanhumanoidcoordinationcollaborative,
+      title={Learning Human-Humanoid Coordination for Collaborative Object Carrying}, 
+      author={Yushi Du and Yixuan Li and Baoxiong Jia and Yutang Lin and Pei Zhou and Wei Liang and Yanchao Yang and Siyuan Huang},
+      year={2025},
+      eprint={2510.14293},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO},
+      url={https://arxiv.org/abs/2510.14293}, 
+}
+```
