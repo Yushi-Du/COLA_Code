@@ -21,10 +21,10 @@
 📚 If you are interested in using our work, please cite:
 
 ```
-@misc{du2025learning,
+@article{du2025learning,
   title={Learning Human-Humanoid Coordination for Collaborative Object Carrying},
   author={Yushi Du and Yixuan Li and Baoxiong Jia and Yutang Lin and Pei Zhou and Wei Liang and Yanchao Yang and Siyuan Huang},
-  booktitle={arXiv preprint arXiv:2510.14293}},
+  journal={arXiv preprint arXiv:2510.14293},
   year={2025}
 }
 ```
