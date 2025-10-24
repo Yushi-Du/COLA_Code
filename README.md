@@ -1,4 +1,4 @@
-# COLA
+# COLA: Learning Human-Humanoid Coordination for Collaborative Object Carrying
 
 [![arxiv](https://img.shields.io/badge/arXiv%202506.08931-red?logo=arxiv)](http://arxiv.org/abs/2510.14293)
 [![website](https://img.shields.io/badge/Project-0065D3?logo=rocket&logoColor=white)](https://yushi-du.github.io/COLA/)
@@ -21,7 +21,7 @@
 📚 If you are interested in using our work, please cite:
 
 ```
-@misc{du2025learninghumanhumanoidcoordinationcollaborative,
+@misc{du2025learning,
   title={Learning Human-Humanoid Coordination for Collaborative Object Carrying},
   author={Yushi Du and Yixuan Li and Baoxiong Jia and Yutang Lin and Pei Zhou and Wei Liang and Yanchao Yang and Siyuan Huang},
   booktitle={arXiv preprint arXiv:2510.14293}},
