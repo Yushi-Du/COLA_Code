@@ -9,7 +9,8 @@
 
 ### 📅 Upcoming
 - Code release for the core method
-- Code release whole sim2sim pipeline
+- Code release sim2sim pipeline
+- Code release whole sim2real pipeline
 
 ## Current Status
 🚧 **Work in Progress** - We are currently preparing the code for public release following our paper submission. Stay tuned for updates!
