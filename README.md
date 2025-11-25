@@ -15,6 +15,17 @@
 ## Current Status
 🚧 **Work in Progress** - We are currently preparing the code for public release following our paper submission. Stay tuned for updates!
 
+## Usage
+
+### Installation
+Install [IsaacLab](https://isaac-sim.github.io/IsaacLab/main/index.html) and [Mujoco](https://github.com/google-deepmind/mujoco).
+
+### Sim2sim pipeline
+```bash
+cd ./Sim2sim/Sim2sim_mujoco
+python ./sim2sim/deploy_mujoco_locomotion.py
+```
+
 ## Get Notified
 ⭐ Star this repository to get notified when code is released!
 
