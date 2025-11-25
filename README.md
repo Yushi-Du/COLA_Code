@@ -16,7 +16,7 @@
 🚧 **Work in Progress** - We are currently preparing the code for public release following our paper submission. Stay tuned for updates!
 
 ## Get Notified
-🚧 Star this repository to get notified when the code release!
+⭐️ Star this repository to get notified when the code release!
 
 ## Citation
 📚 If you are interested in using our work, please cite:
