@@ -33,25 +33,25 @@ XYYAW = {"x": 0.0, "y": 0.0, "yaw": 0.0}
 
 def on_press(key):
     try:
-        if key.char =="8":  # 按 8 前进
-            XYYAW["x"] += 0.1  # 控制机器人，例如移动
+        if key.char =="8":  # 8 forwards
+            XYYAW["x"] += 0.1
             print("cmd:", XYYAW)
-        elif key.char =="2":  # 按 2 后退
+        elif key.char =="2":  # 2 backwards
             XYYAW["x"] -= 0.1
             print("cmd:", XYYAW)
-        elif key.char =="4":  # 按 4 左平移
+        elif key.char =="4":  # 4 move left
             XYYAW["y"] += 0.1
             print("cmd:", XYYAW)
-        elif key.char =="6":  # 按 6 右平移
+        elif key.char =="6":  # 6 move right
             XYYAW["y"] -= 0.1
             print("cmd:", XYYAW)
-        elif key.char =="7":  # 按 7 左转
+        elif key.char =="7":  # 7 for left turn
             XYYAW["yaw"] += 0.1
             print("cmd:", XYYAW)
-        elif key.char =="9":  # 按 9 右转
+        elif key.char =="9":  # 9 for right turn
             XYYAW["yaw"] -= 0.1
             print("cmd:", XYYAW)
-        elif key.char =="5":  # 按 5 停止
+        elif key.char =="5":  # 5 for stop
             XYYAW["x"] = 0.0
             XYYAW["y"] = 0.0
             XYYAW["yaw"] = 0.0
