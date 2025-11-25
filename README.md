@@ -12,9 +12,6 @@
 - Code release for training
 - Code release whole sim2real pipeline
 
-## Current Status
-🚧 **Work in Progress** - We are currently preparing the code for public release following our paper submission. Stay tuned for updates!
-
 ## Usage
 
 ### Installation
@@ -27,7 +24,7 @@ python ./sim2sim/deploy_mujoco_locomotion.py
 ```
 
 ## Get Notified
-⭐ Star this repository to get notified when code is released!
+🚧 Star this repository to stay tuned for updates!
 
 ## Citation
 📚 If you are interested in using our work, please cite:
