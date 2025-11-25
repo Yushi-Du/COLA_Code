@@ -7,10 +7,9 @@
 
 ## Roadmap
 
-### 📅 Scheduled
-- Code release sim2sim pipeline ✅
-- Code release for training
-- Code release whole sim2real pipeline
+### 📅 Upcoming
+- Code release for the core method
+- Code release whole sim2sim pipeline
 
 ## Usage
 
