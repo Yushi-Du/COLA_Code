@@ -9,6 +9,8 @@
 
 ### 📅 Scheduled
 - Code release sim2sim pipeline ✅
+- Locomotion checkpoint release ✅
+- Full model checkpoint release
 - Detailed instructions for sim2sim pipeline
 - Code release for training
 - Code release whole sim2real pipeline
