@@ -1,0 +1,124 @@
+#usda 1.0
+(
+    defaultPrim = "g1_29dof_with_hand_rev_1_0"
+    metersPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "g1_29dof_with_hand_rev_1_0" (
+    prepend references = @g1_29dof_with_hand_rev_1_0_hand_fixed_for_collab.usd@
+)
+{
+    over "joints"
+    {
+        over "left_hip_pitch_joint" (
+            prepend apiSchemas = ["PhysicsJointStateAPI:angular"]
+        )
+        {
+            float state:angular:physics:position = -11.459156
+        }
+        over "right_hip_pitch_joint" (
+            prepend apiSchemas = ["PhysicsJointStateAPI:angular"]
+        )
+        {
+            float state:angular:physics:position = -11.459156
+        }
+        over "left_knee_joint" (
+            prepend apiSchemas = ["PhysicsJointStateAPI:angular"]
+        )
+        {
+            float state:angular:physics:position = 24.064228
+        }
+        over "right_knee_joint" (
+            prepend apiSchemas = ["PhysicsJointStateAPI:angular"]
+        )
+        {
+            float state:angular:physics:position = 24.064228
+        }
+        over "left_ankle_pitch_joint" (
+            prepend apiSchemas = ["PhysicsJointStateAPI:angular"]
+        )
+        {
+            float state:angular:physics:position = -13.178029
+        }
+        over "right_ankle_pitch_joint" (
+            prepend apiSchemas = ["PhysicsJointStateAPI:angular"]
+        )
+        {
+            float state:angular:physics:position = -13.178029
+        }
+        over "left_wrist_roll_joint" (
+            prepend apiSchemas = ["PhysicsJointStateAPI:angular"]
+        )
+        {
+            float state:angular:physics:position = -90
+        }
+        over "right_wrist_roll_joint" (
+            prepend apiSchemas = ["PhysicsJointStateAPI:angular"]
+        )
+        {
+            float state:angular:physics:position = 90
+        }
+        over "left_hand_palm_joint" (active = false) {}
+        over "left_hand_index_0_joint" (active = false) {}
+        over "left_hand_index_1_joint" (active = false) {}
+        over "left_hand_middle_0_joint" (active = false) {}
+        over "left_hand_middle_1_joint" (active = false) {}
+        over "left_hand_thumb_0_joint" (active = false) {}
+        over "left_hand_thumb_1_joint" (active = false) {}
+        over "left_hand_thumb_2_joint" (active = false) {}
+        over "right_hand_palm_joint" (active = false) {}
+        over "right_hand_index_0_joint" (active = false) {}
+        over "right_hand_index_1_joint" (active = false) {}
+        over "right_hand_middle_0_joint" (active = false) {}
+        over "right_hand_middle_1_joint" (active = false) {}
+        over "right_hand_thumb_0_joint" (active = false) {}
+        over "right_hand_thumb_1_joint" (active = false) {}
+        over "right_hand_thumb_2_joint" (active = false) {}
+    }
+
+    over "left_hand_palm_link" (active = false) {}
+    over "left_hand_index_0_link" (active = false) {}
+    over "left_hand_index_1_link" (active = false) {}
+    over "left_hand_middle_0_link" (active = false) {}
+    over "left_hand_middle_1_link" (active = false) {}
+    over "left_hand_thumb_0_link" (active = false) {}
+    over "left_hand_thumb_1_link" (active = false) {}
+    over "left_hand_thumb_2_link" (active = false) {}
+    over "right_hand_palm_link" (active = false) {}
+    over "right_hand_index_0_link" (active = false) {}
+    over "right_hand_index_1_link" (active = false) {}
+    over "right_hand_middle_0_link" (active = false) {}
+    over "right_hand_middle_1_link" (active = false) {}
+    over "right_hand_thumb_0_link" (active = false) {}
+    over "right_hand_thumb_1_link" (active = false) {}
+    over "right_hand_thumb_2_link" (active = false) {}
+
+    over "left_wrist_yaw_link"
+    {
+        def Cylinder "fixed_bar_connector"
+        {
+            token axis = "X"
+            double height = 0.1023515687
+            double radius = 0.022
+            color3f[] primvars:displayColor = [(0.18, 0.32, 0.55)]
+            quatf xformOp:orient = (0.98986715, 0, 0, -0.14199659)
+            double3 xformOp:translate = (0.0491120665, -0.014386307, 0.000010252)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+        }
+    }
+
+    over "right_wrist_yaw_link"
+    {
+        def Cylinder "fixed_bar_connector"
+        {
+            token axis = "X"
+            double height = 0.1023515687
+            double radius = 0.022
+            color3f[] primvars:displayColor = [(0.18, 0.32, 0.55)]
+            quatf xformOp:orient = (0.98986715, 0, 0, 0.14199659)
+            double3 xformOp:translate = (0.0491120665, 0.014386307, 0.000010252)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:orient"]
+        }
+    }
+}

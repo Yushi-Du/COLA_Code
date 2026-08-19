@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+logs/
+wandb/
+outputs/
+*.egg-info/
+.vscode/
+/deployment/mujoco/policies/
+slurm-*.out
+slurm-*.err

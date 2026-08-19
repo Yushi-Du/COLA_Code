@@ -1,0 +1,7 @@
+[submodule "IsaacLab"]
+	path = IsaacLab
+	url = https://github.com/isaac-sim/IsaacLab.git
+	shallow = true
+[submodule "rsl_rl"]
+	path = rsl_rl
+	url = https://github.com/Yushi-Du/COLA_rsl_rl.git
