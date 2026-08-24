@@ -536,6 +536,8 @@ class TeacherAgentCfg(RslRlOnPolicyRunnerCfg):
         noise_std_type="scalar",
         actor_hidden_dims=[512, 256, 128],
         critic_hidden_dims=[512, 256, 128],
+        residual_actor_hidden_dims=[512, 256, 256],
+        residual_critic_hidden_dims=[512, 256, 256],
         activation="elu",
         history_length=10,
         num_envs=MISSING,
@@ -590,8 +592,9 @@ class StudentAgentCfg(RslRlOnPolicyRunnerCfg):
     policy = RslRlDistillationStudentTeacherCfg(
         class_name="StudentTeacherDistill",
         init_noise_std=0.1,
-        student_hidden_dims=[512, 256, 128],
+        student_hidden_dims=[1024, 512, 256, 256],
         teacher_hidden_dims=[512, 256, 128],
+        teacher_residual_hidden_dims=[512, 256, 256],
         activation="elu",
         teacher_action_clip=MISSING,
     )
@@ -617,7 +620,10 @@ class StudentAgentCfg(RslRlOnPolicyRunnerCfg):
 
 
 def collaboration_experiment_cfg(
-    *, masked_height_command: float | None, vertical_velocity_noise: float
+    *,
+    masked_height_command: float | None,
+    vertical_velocity_noise: float,
+    student_mass_observation_enabled: bool,
 ) -> CollaborationExperimentCfg:
     """Build the observation, grasp, command, and reset contract shared by COLA."""
 
@@ -646,6 +652,9 @@ def collaboration_experiment_cfg(
         observations=CollaborationObservationCfg(
             mask_planar_velocity_command=True,
             masked_height_command=masked_height_command,
+            student_mass_observation_enabled=student_mass_observation_enabled,
+            student_mass_bias_range_kg=(-0.5, 0.5),
+            student_no_object_true_mass_range_kg=(0.8, 4.0),
         ),
         support_motion=SupportMotionCfg(
             no_object_probability=0.0,
@@ -721,8 +730,10 @@ def configure_fixed_bar_g1(cfg, *, robot_asset, terrain, debug_vis: bool) -> Non
     events.reset_hand_mass = None
     mass_event = events.reset_target_object_mass
     mass_event.params["asset_cfg"] = SceneEntityCfg("carried_bar")
-    mass_event.params["mass_distribution_params"] = (0.8, 1.2)
-    mass_event.params["operation"] = "scale"
+    mass_event.params["mass_distribution_params"] = (0.8, 4.0)
+    mass_event.params["operation"] = "abs"
+    mass_event.params["distribution"] = "uniform"
+    mass_event.params["recompute_inertia"] = True
     events.reset_root_and_box_link_setting_with_joint_state_uniform.func = (
         collaboration_mdp.reset_robot_and_bar_uniform
     )

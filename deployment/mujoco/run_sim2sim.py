@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 from collections import deque
+import math
 from pathlib import Path
 import time
 
@@ -21,7 +22,8 @@ SIMULATION_DT = 0.001
 POLICY_DT = 0.02
 POLICY_DECIMATION = round(POLICY_DT / SIMULATION_DT)
 NUM_ACTIONS = 29
-OBSERVATION_FRAME_SIZE = 111
+BASE_OBSERVATION_FRAME_SIZE = 111
+MASS_OBSERVATION_FRAME_SIZE = 112
 PHASE1_OBSERVATION_HISTORY = 10
 STUDENT_OBSERVATION_HISTORY = 25
 ACTION_SCALE = 0.25
@@ -29,6 +31,9 @@ ANGULAR_VELOCITY_SCALE = 0.25
 JOINT_VELOCITY_SCALE = 0.05
 OBSERVATION_CLIP = 100.0
 ACTION_CLIP = 100.0
+TRUE_BAR_MASS_RANGE_KG = (0.8, 4.0)
+MASS_BIAS_RANGE_KG = (-0.5, 0.5)
+MASS_OBSERVATION_RANGE_KG = (0.3, 4.5)
 
 COMMAND_LIMITS = np.array(
     [
@@ -187,6 +192,20 @@ def resolve_device(requested: str) -> torch.device:
     return torch.device(requested)
 
 
+def validate_mass_observation_kg(value: float) -> float:
+    """Validate a deployment mass input against the training support."""
+
+    value = float(value)
+    if not math.isfinite(value):
+        raise argparse.ArgumentTypeError("mass observation must be finite")
+    low, high = MASS_OBSERVATION_RANGE_KG
+    if not low <= value <= high:
+        raise argparse.ArgumentTypeError(
+            f"mass observation must remain in [{low}, {high}] kg"
+        )
+    return value
+
+
 class LocomotionSim2Sim:
     def __init__(self, args: argparse.Namespace) -> None:
         self.model = mujoco.MjModel.from_xml_path(str(args.model.resolve()))
@@ -252,9 +271,32 @@ class LocomotionSim2Sim:
         self.policy = torch.jit.load(
             str(args.policy.resolve()), map_location=self.device
         ).to(self.device).eval()
-        self.policy_kind, self.observation_history_length = (
-            self._detect_policy_contract()
-        )
+        (
+            self.policy_kind,
+            self.observation_history_length,
+            self.observation_frame_size,
+            self.mass_conditioned,
+        ) = self._detect_policy_contract()
+        self.mass_pseudo_true_kg: float | None = None
+        self.mass_bias_kg: float | None = None
+        self.mass_observation_kg: float | None = None
+        if self.mass_conditioned:
+            if args.mass_observation_kg is None:
+                random = np.random.default_rng(args.mass_seed)
+                self.mass_pseudo_true_kg = float(
+                    random.uniform(*TRUE_BAR_MASS_RANGE_KG)
+                )
+                self.mass_bias_kg = float(random.uniform(*MASS_BIAS_RANGE_KG))
+                self.mass_observation_kg = (
+                    self.mass_pseudo_true_kg + self.mass_bias_kg
+                )
+            else:
+                self.mass_observation_kg = args.mass_observation_kg
+        elif args.mass_observation_kg is not None:
+            raise ValueError(
+                "--mass-observation-kg is only valid for a 2800-input "
+                "mass-conditioned phase-3 policy"
+            )
         self.command = np.asarray(args.command, dtype=np.float32)
         self._validate_command(self.command)
         if self.policy_kind == "phase3_student" and not np.array_equal(
@@ -273,16 +315,26 @@ class LocomotionSim2Sim:
         self._validate_policy()
 
     @torch.inference_mode()
-    def _detect_policy_contract(self) -> tuple[str, int]:
+    def _detect_policy_contract(self) -> tuple[str, int, int, bool]:
         candidates = (
-            ("phase1", PHASE1_OBSERVATION_HISTORY),
-            ("phase3_student", STUDENT_OBSERVATION_HISTORY),
+            (
+                "phase1",
+                PHASE1_OBSERVATION_HISTORY,
+                BASE_OBSERVATION_FRAME_SIZE,
+                False,
+            ),
+            (
+                "phase3_student",
+                STUDENT_OBSERVATION_HISTORY,
+                MASS_OBSERVATION_FRAME_SIZE,
+                True,
+            ),
         )
-        matches: list[tuple[str, int]] = []
-        for kind, history_length in candidates:
+        matches: list[tuple[str, int, int, bool]] = []
+        for kind, history_length, frame_size, mass_conditioned in candidates:
             sample = torch.zeros(
                 1,
-                OBSERVATION_FRAME_SIZE * history_length,
+                frame_size * history_length,
                 device=self.device,
             )
             try:
@@ -290,13 +342,15 @@ class LocomotionSim2Sim:
                 if isinstance(output, (tuple, list)):
                     output = output[0]
                 if tuple(output.shape) == (1, NUM_ACTIONS):
-                    matches.append((kind, history_length))
+                    matches.append(
+                        (kind, history_length, frame_size, mass_conditioned)
+                    )
             except (RuntimeError, ValueError):
                 continue
         if len(matches) != 1:
             supported = (
-                OBSERVATION_FRAME_SIZE * PHASE1_OBSERVATION_HISTORY,
-                OBSERVATION_FRAME_SIZE * STUDENT_OBSERVATION_HISTORY,
+                BASE_OBSERVATION_FRAME_SIZE * PHASE1_OBSERVATION_HISTORY,
+                MASS_OBSERVATION_FRAME_SIZE * STUDENT_OBSERVATION_HISTORY,
             )
             raise RuntimeError(
                 f"Policy must accept exactly one supported input width {supported}; "
@@ -373,7 +427,11 @@ class LocomotionSim2Sim:
                 self.previous_action,
             )
         )
-        if frame.shape != (OBSERVATION_FRAME_SIZE,):
+        if self.mass_conditioned:
+            frame = np.concatenate(
+                (frame, np.array([self.mass_observation_kg], dtype=np.float32))
+            )
+        if frame.shape != (self.observation_frame_size,):
             raise RuntimeError(f"Unexpected observation frame {frame.shape}")
         return frame
 
@@ -437,8 +495,8 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=DEFAULT_POLICY,
         help=(
-            "Exported 1110-D phase-1 actor or 2775-D phase-3 student policy "
-            "(default: deployment/mujoco/student.jit)."
+            "Exported 1110-D phase-1 actor or 2800-D mass-conditioned phase-3 "
+            "student policy (default: deployment/mujoco/student.jit)."
         ),
     )
     parser.add_argument("--model", type=Path, default=DEFAULT_MODEL)
@@ -456,6 +514,21 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--initial-height", type=float, default=0.80)
     parser.add_argument("--duration", type=float, default=0.0)
     parser.add_argument("--device", default="auto")
+    parser.add_argument(
+        "--mass-observation-kg",
+        type=validate_mass_observation_kg,
+        default=None,
+        help=(
+            "Episode-fixed measured mass for a 2800-input student. By default, "
+            "the no-object training distribution is sampled once per rollout."
+        ),
+    )
+    parser.add_argument(
+        "--mass-seed",
+        type=int,
+        default=42,
+        help="Seed for the default no-object pseudo-mass and measurement bias.",
+    )
     parser.add_argument("--headless", action="store_true")
     parser.add_argument("--schedule", action="store_true")
     return parser.parse_args()
@@ -528,9 +601,16 @@ def main() -> None:
         f"model={args.model}\npolicy={args.policy}\n"
         f"physics={1.0 / SIMULATION_DT:.0f}Hz policy={1.0 / POLICY_DT:.0f}Hz "
         f"contract={simulation.policy_kind} "
-        f"observation={OBSERVATION_FRAME_SIZE}x"
+        f"observation={simulation.observation_frame_size}x"
         f"{simulation.observation_history_length}"
     )
+    if simulation.mass_conditioned:
+        print(
+            "mass_observation="
+            f"{simulation.mass_observation_kg:.6f}kg "
+            f"pseudo_true={simulation.mass_pseudo_true_kg} "
+            f"bias={simulation.mass_bias_kg}"
+        )
     if args.schedule:
         run_schedule(simulation)
     else:

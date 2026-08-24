@@ -465,7 +465,7 @@ class _ControllerForceDetrendedVariancePenalty(ManagerTermBase):
         force_scale = float(cfg.params["force_scale"])
         if force_scale <= 0.0:
             raise ValueError("force_scale must be positive")
-        env.configure_controller_force_jitter_tracking(
+        env.configure_controller_wrench_jitter_tracking(
             history_length, settled_tolerance
         )
 
@@ -507,12 +507,48 @@ class horizontal_controller_force_jitter_penalty(
     component_slice = slice(0, 2)
 
 
+class yaw_controller_torque_jitter_penalty(ManagerTermBase):
+    """Penalize high-frequency variation of the applied world-frame yaw torque."""
+
+    def __init__(self, cfg, env):
+        super().__init__(cfg, env)
+        history_length = int(cfg.params["history_length"])
+        settled_tolerance = float(cfg.params["settled_tolerance"])
+        torque_scale = float(cfg.params["torque_scale"])
+        if torque_scale <= 0.0:
+            raise ValueError("torque_scale must be positive")
+        env.configure_controller_wrench_jitter_tracking(
+            history_length, settled_tolerance
+        )
+
+    def __call__(
+        self,
+        env,
+        history_length: int,
+        torque_scale: float,
+        settled_tolerance: float,
+        maximum_penalty: float,
+    ) -> torch.Tensor:
+        del history_length, settled_tolerance
+        history, valid_samples = env.get_controller_torque_jitter_history()
+        detrended_variance = linear_detrended_variance(
+            history, signal_scale=torque_scale
+        )
+        ready = valid_samples >= history.shape[1]
+        return (
+            torch.clamp(detrended_variance, max=maximum_penalty)
+            * ready
+            * _active_bar_mask(env)
+        )
+
+
 __all__ = [
     "bar_translational_jitter_penalty",
     "bar_vector_rate_jitter_penalty",
     "waist_roll_position_jitter_penalty",
     "height_controller_force_jitter_penalty",
     "horizontal_controller_force_jitter_penalty",
+    "yaw_controller_torque_jitter_penalty",
     "bar_center_height_tracking_reward",
     "bar_center_horizontal_velocity_tracking_reward",
     "target_bar_vector_alignment_reward",
@@ -534,4 +570,5 @@ __all__ = [
     "virtual_palm_position_reward",
     "virtual_palm_quaternion_reward",
     "waist_roll_position_jitter_penalty",
+    "yaw_controller_torque_jitter_penalty",
 ]

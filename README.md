@@ -77,6 +77,10 @@ python deployment/mujoco/run_sim2sim.py \
   --policy /path/to/policy.jit
 ```
 
+For the current mass-conditioned student, optionally pass the measured object
+mass with `--mass-observation-kg`; omitting it reproduces the episode-fixed
+no-object training distribution.
+
 See [deployment/mujoco/README.md](deployment/mujoco/README.md) for command
 ranges, headless checks, and the physics contract.
 

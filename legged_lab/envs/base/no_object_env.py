@@ -16,6 +16,7 @@ from legged_lab.envs.base.locomotion_env import LocomotionEnv
 from legged_lab.mdp.commands import UniformEEPoseCommandWorldFollowingQuatVel
 from legged_lab.mdp.commands_cfg import UniformEEPoseCommandWorldCfg
 from legged_lab.utils.env_utils.no_object_scene import NoObjectSceneCfg
+from legged_lab.utils.mass_observation import no_object_mass_observation
 from legged_lab.utils.static_population import (
     NO_OBJECT_PRIVILEGED_DIM,
     NO_OBJECT_TOPOLOGY_ID,
@@ -110,6 +111,51 @@ class NoObjectEnv(LocomotionEnv):
             command[:, :3] = 0.0
         return command
 
+    def _student_mass_observation_enabled(self) -> bool:
+        observations_cfg = self.cfg.experiment.observations
+        return bool(
+            getattr(observations_cfg, "student_mass_observation_enabled", False)
+        )
+
+    def _ensure_student_mass_observation_buffers(self):
+        if hasattr(self, "_student_mass_observation_kg"):
+            return
+        observations_cfg = self.cfg.experiment.observations
+        low, high = observations_cfg.student_no_object_true_mass_range_kg
+        midpoint = 0.5 * (float(low) + float(high))
+        self._student_mass_pseudo_true_kg = torch.full(
+            (self.num_envs,), midpoint, device=self.device, dtype=torch.float32
+        )
+        self._student_mass_bias_kg = torch.zeros_like(
+            self._student_mass_pseudo_true_kg
+        )
+        self._student_mass_observation_kg = self._student_mass_pseudo_true_kg.clone()
+
+    def _student_mass_observation(self) -> torch.Tensor:
+        self._ensure_student_mass_observation_buffers()
+        return self._student_mass_observation_kg
+
+    def _reset_student_mass_observation(self, env_ids: torch.Tensor):
+        if not self._student_mass_observation_enabled():
+            return
+        self._ensure_student_mass_observation_buffers()
+        reference = self._student_mass_observation_kg[env_ids]
+        observation_kg, pseudo_true_kg, bias_kg = no_object_mass_observation(
+            reference,
+            self.cfg.experiment.observations.student_no_object_true_mass_range_kg,
+            self.cfg.experiment.observations.student_mass_bias_range_kg,
+        )
+        self._student_mass_pseudo_true_kg[env_ids] = pseudo_true_kg
+        self._student_mass_bias_kg[env_ids] = bias_kg
+        self._student_mass_observation_kg[env_ids] = observation_kg
+
+    def reset(self, env_ids):
+        super().reset(env_ids)
+        if len(env_ids) == 0:
+            return
+        ids = torch.as_tensor(env_ids, device=self.device, dtype=torch.long)
+        self._reset_student_mass_observation(ids)
+
     def _base_proprioception(self) -> tuple[torch.Tensor, ...]:
         robot = self.robot
         return (
@@ -145,10 +191,16 @@ class NoObjectEnv(LocomotionEnv):
             masked_height = self.cfg.experiment.observations.masked_height_command
             if masked_height is not None:
                 student_command[:, 3] = masked_height
+            student_features = (
+                (self._student_mass_observation().unsqueeze(1),)
+                if self._student_mass_observation_enabled()
+                else ()
+            )
             actor_obs = torch.cat(
                 (
                     student_command * self.obs_scales.commands,
                     *proprioception,
+                    *student_features,
                 ),
                 dim=1,
             )

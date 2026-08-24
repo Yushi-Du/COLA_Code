@@ -41,6 +41,7 @@ from legged_lab.utils.bar_geometry import (
     reset_human_effort_statistics,
 )
 from legged_lab.utils.env_utils.collaboration_scene import CollaborationSceneCfg
+from legged_lab.utils.mass_observation import noisy_mass_observation
 
 
 class FixedBarCollaborationEnv(VecEnv):
@@ -241,6 +242,10 @@ class FixedBarCollaborationEnv(VecEnv):
         self._bar_mass = torch.full(
             (n,), self.cfg.bar_controller.bar_mass, device=self.device
         )
+        if self._student_mass_observation_enabled():
+            self._student_mass_true_kg = self._bar_mass.clone()
+            self._student_mass_bias_kg = torch.zeros_like(self._bar_mass)
+            self._student_mass_observation_kg = self._bar_mass.clone()
 
         cfg = self.cfg.bar_controller
         self.bar_controller = BarController(
@@ -265,7 +270,7 @@ class FixedBarCollaborationEnv(VecEnv):
         self.controller_yaw_axis_w = controller.yaw_axis_w
         self.controller_yaw_scalar_torque = controller.yaw_control_torque
 
-        contract = getattr(self, "_controller_force_jitter_contract", None)
+        contract = getattr(self, "_controller_wrench_jitter_contract", None)
         if contract is not None:
             history_length, _ = contract
             self.controller_force_jitter_history_w = torch.zeros(
@@ -275,10 +280,48 @@ class FixedBarCollaborationEnv(VecEnv):
                 device=self.device,
                 dtype=self.controller_force_w.dtype,
             )
-            self.controller_force_jitter_valid_samples = torch.zeros(
+            self.controller_torque_jitter_history_w = torch.zeros(
+                n,
+                history_length,
+                3,
+                device=self.device,
+                dtype=self.controller_torque_w.dtype,
+            )
+            self.controller_wrench_jitter_valid_samples = torch.zeros(
                 n, dtype=torch.long, device=self.device
             )
-            self.controller_force_jitter_cursor = 0
+            self.controller_wrench_jitter_cursor = 0
+
+    def _student_mass_observation_enabled(self) -> bool:
+        observations_cfg = self.cfg.experiment.observations
+        return bool(
+            getattr(observations_cfg, "student_mass_observation_enabled", False)
+        )
+
+    def _student_mass_observation(self) -> torch.Tensor:
+        """Return the episode-fixed, deliberately noisy mass shown to the student."""
+
+        observation = getattr(self, "_student_mass_observation_kg", None)
+        if observation is not None:
+            return observation
+        return torch.full(
+            (self.num_envs,),
+            self.cfg.bar_controller.bar_mass,
+            device=self.device,
+            dtype=torch.float32,
+        )
+
+    def _reset_student_mass_observation(self, env_ids: torch.Tensor):
+        if not self._student_mass_observation_enabled():
+            return
+        true_mass_kg = self._bar_mass[env_ids]
+        observation_kg, bias_kg = noisy_mass_observation(
+            true_mass_kg,
+            self.cfg.experiment.observations.student_mass_bias_range_kg,
+        )
+        self._student_mass_true_kg[env_ids] = true_mass_kg
+        self._student_mass_bias_kg[env_ids] = bias_kg
+        self._student_mass_observation_kg[env_ids] = observation_kg
 
     def get_human_endpoint_state(self) -> tuple[torch.Tensor, torch.Tensor]:
         cfg = self.cfg.bar_controller
@@ -336,21 +379,21 @@ class FixedBarCollaborationEnv(VecEnv):
         target.clamp_(*height_cfg.corrected_height_range)
         return target + self.scene.env_origins[:, 2]
 
-    def configure_controller_force_jitter_tracking(
+    def configure_controller_wrench_jitter_tracking(
         self, history_length: int, settled_tolerance: float
     ):
-        """Register the shared 400 Hz force-history contract for reward terms."""
+        """Register the shared 400 Hz wrench-history contract for reward terms."""
 
         contract = (int(history_length), float(settled_tolerance))
         if contract[0] < 3:
-            raise ValueError("force-jitter history_length must be at least three")
-        existing = getattr(self, "_controller_force_jitter_contract", None)
+            raise ValueError("wrench-jitter history_length must be at least three")
+        existing = getattr(self, "_controller_wrench_jitter_contract", None)
         if existing is not None and existing != contract:
             raise ValueError(
-                "All controller force-jitter rewards must use one history contract: "
+                "All controller wrench-jitter rewards must use one history contract: "
                 f"existing={existing}, requested={contract}."
             )
-        self._controller_force_jitter_contract = contract
+        self._controller_wrench_jitter_contract = contract
 
     def get_controller_force_jitter_history(
         self,
@@ -359,13 +402,25 @@ class FixedBarCollaborationEnv(VecEnv):
 
         history = torch.roll(
             self.controller_force_jitter_history_w,
-            shifts=-self.controller_force_jitter_cursor,
+            shifts=-self.controller_wrench_jitter_cursor,
             dims=1,
         )
-        return history, self.controller_force_jitter_valid_samples
+        return history, self.controller_wrench_jitter_valid_samples
 
-    def _record_controller_force_jitter_sample(self):
-        contract = getattr(self, "_controller_force_jitter_contract", None)
+    def get_controller_torque_jitter_history(
+        self,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return chronologically ordered 400 Hz torque history and valid counts."""
+
+        history = torch.roll(
+            self.controller_torque_jitter_history_w,
+            shifts=-self.controller_wrench_jitter_cursor,
+            dims=1,
+        )
+        return history, self.controller_wrench_jitter_valid_samples
+
+    def _record_controller_wrench_jitter_sample(self):
+        contract = getattr(self, "_controller_wrench_jitter_contract", None)
         if contract is None:
             return
         history_length, settled_tolerance = contract
@@ -394,20 +449,23 @@ class FixedBarCollaborationEnv(VecEnv):
         )
 
         self.controller_force_jitter_history_w[
-            :, self.controller_force_jitter_cursor
+            :, self.controller_wrench_jitter_cursor
         ].copy_(self.controller_force_w)
-        self.controller_force_jitter_valid_samples.copy_(
+        self.controller_torque_jitter_history_w[
+            :, self.controller_wrench_jitter_cursor
+        ].copy_(self.controller_torque_w)
+        self.controller_wrench_jitter_valid_samples.copy_(
             torch.where(
                 settled,
                 torch.clamp(
-                    self.controller_force_jitter_valid_samples + 1,
+                    self.controller_wrench_jitter_valid_samples + 1,
                     max=history_length,
                 ),
-                torch.zeros_like(self.controller_force_jitter_valid_samples),
+                torch.zeros_like(self.controller_wrench_jitter_valid_samples),
             )
         )
-        self.controller_force_jitter_cursor = (
-            self.controller_force_jitter_cursor + 1
+        self.controller_wrench_jitter_cursor = (
+            self.controller_wrench_jitter_cursor + 1
         ) % history_length
 
     def get_controller_point_state(self) -> tuple[torch.Tensor, torch.Tensor]:
@@ -484,9 +542,10 @@ class FixedBarCollaborationEnv(VecEnv):
             self.human_effort_elapsed_time,
             env_ids,
         )
-        if hasattr(self, "controller_force_jitter_valid_samples"):
+        if hasattr(self, "controller_wrench_jitter_valid_samples"):
             self.controller_force_jitter_history_w[env_ids] = 0.0
-            self.controller_force_jitter_valid_samples[env_ids] = 0
+            self.controller_torque_jitter_history_w[env_ids] = 0.0
+            self.controller_wrench_jitter_valid_samples[env_ids] = 0
 
     def _update_endpoint_controller(self):
         """Evaluate and stage the centered world-frame force and yaw torque."""
@@ -527,7 +586,7 @@ class FixedBarCollaborationEnv(VecEnv):
         )
         self.controller_force_w[self.no_object_mask] = 0.0
         self.controller_torque_w[self.no_object_mask] = 0.0
-        self._record_controller_force_jitter_sample()
+        self._record_controller_wrench_jitter_sample()
 
         active_bar = (~self.no_object_mask).to(self.controller_force_w.dtype)
         instantaneous_effort = controller_force_effort(self.controller_force_w)
@@ -595,8 +654,18 @@ class FixedBarCollaborationEnv(VecEnv):
             masked_height = self.cfg.experiment.observations.masked_height_command
             if masked_height is not None:
                 student_command[:, 3] = masked_height
+            student_features = (
+                (self._student_mass_observation().unsqueeze(1),)
+                if self._student_mass_observation_enabled()
+                else ()
+            )
             actor_obs = torch.cat(
-                (student_command * self.obs_scales.commands, *proprioception), dim=-1
+                (
+                    student_command * self.obs_scales.commands,
+                    *proprioception,
+                    *student_features,
+                ),
+                dim=-1,
             )
             teacher_obs = torch.cat(
                 (
@@ -682,6 +751,7 @@ class FixedBarCollaborationEnv(VecEnv):
                 global_env_step_count=self.sim_step_counter // self.cfg.sim.decimation,
             )
         self._refresh_bar_mass_properties()
+        self._reset_student_mass_observation(ids)
 
         self.extras["log"].update(self.reward_manager.reset(ids))
         self.extras["time_outs"] = self.time_out_buf

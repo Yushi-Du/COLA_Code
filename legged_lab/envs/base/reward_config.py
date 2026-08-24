@@ -196,7 +196,7 @@ class CollaborationRobotRewardCfg:
     )
     waist_roll_position_jitter_penalty = RewTerm(
         func=collaboration_mdp.waist_roll_position_jitter_penalty,
-        weight=-0.10,
+        weight=-0.20,
         params={
             "history_length": 10,
             "position_scale": 0.02,
@@ -335,7 +335,7 @@ class FixedBarRewardCfg(CollaborationRobotRewardCfg):
     )
     bar_vector_rate_jitter_penalty = RewTerm(
         func=collaboration_mdp.bar_vector_rate_jitter_penalty,
-        weight=-0.05,
+        weight=-0.10,
         params={
             "history_length": 10,
             "vector_rate_scale": 0.35,
@@ -345,7 +345,7 @@ class FixedBarRewardCfg(CollaborationRobotRewardCfg):
     )
     height_controller_force_jitter_penalty = RewTerm(
         func=collaboration_mdp.height_controller_force_jitter_penalty,
-        weight=-0.40,
+        weight=-0.80,
         params={
             "history_length": 40,
             "force_scale": 10.0,
@@ -355,10 +355,20 @@ class FixedBarRewardCfg(CollaborationRobotRewardCfg):
     )
     horizontal_controller_force_jitter_penalty = RewTerm(
         func=collaboration_mdp.horizontal_controller_force_jitter_penalty,
-        weight=-0.10,
+        weight=-0.20,
         params={
             "history_length": 40,
             "force_scale": 5.0,
+            "settled_tolerance": 1.0e-4,
+            "maximum_penalty": 4.0,
+        },
+    )
+    yaw_controller_torque_jitter_penalty = RewTerm(
+        func=collaboration_mdp.yaw_controller_torque_jitter_penalty,
+        weight=-0.20,
+        params={
+            "history_length": 40,
+            "torque_scale": 1.0,
             "settled_tolerance": 1.0e-4,
             "maximum_penalty": 4.0,
         },
@@ -629,6 +639,28 @@ class Phase1RewardCfg(LocomotionRewardBaseCfg):
             "asset_cfg": SceneEntityCfg("robot"),
             "std": 0.25,
             "deadband": 0.02,
+        },
+    )
+    waist_roll_zero_position_penalty = RewTerm(
+        func=mdp.joint_position_l1_to_target,
+        weight=-4.0,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot", joint_names=["waist_roll_joint"]
+            ),
+            "target_position": 0.0,
+        },
+    )
+    waist_roll_position_jitter_penalty = RewTerm(
+        func=collaboration_mdp.waist_roll_position_jitter_penalty,
+        weight=-0.20,
+        params={
+            "history_length": 10,
+            "position_scale": 0.02,
+            "maximum_penalty": 4.0,
+            "asset_cfg": SceneEntityCfg(
+                "robot", joint_names=["waist_roll_joint"]
+            ),
         },
     )
     zero_velocity_command_stillness = RewTerm(

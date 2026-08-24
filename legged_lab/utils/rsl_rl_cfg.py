@@ -38,6 +38,8 @@ class RslRlPpoActorCriticWbcEnd2endFollowingCfg:
 class RslRlPpoActorCriticResidualCfg(RslRlPpoActorCriticWbcEnd2endFollowingCfg):
     """Initialization controls for the collaboration teacher's residual nets."""
 
+    residual_actor_hidden_dims: list[int] | None = None
+    residual_critic_hidden_dims: list[int] | None = None
     residual_hidden_init_std: float = MISSING
     residual_final_init_std: float = MISSING
     residual_bias_init: float = MISSING
@@ -51,6 +53,7 @@ class RslRlDistillationStudentTeacherCfg:
     noise_std_type: Literal["scalar", "log"] = "scalar"
     student_hidden_dims: list[int] = MISSING
     teacher_hidden_dims: list[int] = MISSING
+    teacher_residual_hidden_dims: list[int] | None = None
     activation: str = MISSING
     teacher_action_clip: float = MISSING
     teacher_base_privileged_obs_per_frame: int = 13

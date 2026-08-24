@@ -4,8 +4,7 @@ The deployment directory contains one sim2sim path: a 29-action policy running
 on the fixed-hand G1 without a carried object. It accepts either a Phase-1
 actor or a Phase-3 student trained on the no-object population.
 
-The bundled `student.jit` is the exported Phase-3 `model_5000` student and is
-loaded by default.
+The bundled mass-conditioned Phase-3 `student.jit` is loaded by default.
 
 ## Export a checkpoint
 
@@ -47,9 +46,21 @@ python deployment/mujoco/run_sim2sim.py \
 - height: `[0.45, 0.90] m`.
 
 A Phase-3 student uses its exact no-object training observation contract:
-25 frames, zero masked planar command, and masked height `0.78 m`. Passing a
-different `--command` is rejected rather than silently creating an
-out-of-distribution observation.
+25 frames, zero masked planar command, and masked height `0.78 m`. The current
+mass-conditioned student adds one episode-fixed mass scalar per frame. By
+default, the runner samples a pseudo true mass from `[0.8, 4.0] kg` and an
+additive bias from `[-0.5, 0.5] kg`, exactly as in the no-object training
+population. Supply a measured value directly with:
+
+```bash
+python deployment/mujoco/run_sim2sim.py \
+  --policy /path/to/mass_conditioned_policy.jit \
+  --mass-observation-kg 1.5
+```
+
+Direct mass observations must remain within the complete training support
+`[0.3, 4.5] kg`. Passing a different `--command` to a Phase-3 student is
+rejected rather than silently creating an out-of-distribution observation.
 
 Run a finite headless rollout or the built-in in-domain schedule with:
 
@@ -69,8 +80,9 @@ python deployment/mujoco/run_sim2sim.py \
 - passive joint damping and friction: inherited from the validated bar demo
   G1 asset;
 - solver and ground contact parameters: identical to the validated bar demo;
-- observation: 111 values per frame, stacked for 10 frames for Phase 1 or 25
-  frames for Phase 3.
+- observation: 111 values per frame over 10 frames for Phase 1; the current
+  Phase-3 student uses 112 values per frame over 25 frames, including its mass
+  observation.
 
 The bar body, wrist attachments, external bar controllers, and their assets are
 not included in this deployment target.

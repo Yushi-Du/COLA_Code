@@ -25,6 +25,7 @@ class Phase3StudentLeftFixedBarEnvCfg(CollaborationEnvCfg):
     experiment = collaboration_experiment_cfg(
         masked_height_command=0.78,
         vertical_velocity_noise=0.1,
+        student_mass_observation_enabled=True,
     )
     bar_controller = bar_controller_cfg()
     fixed_bar_side: str = "left"

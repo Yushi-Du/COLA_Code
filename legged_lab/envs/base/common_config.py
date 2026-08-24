@@ -36,6 +36,9 @@ class CollaborationGraspCfg:
 class CollaborationObservationCfg:
     mask_planar_velocity_command: bool = MISSING
     masked_height_command: float | None = MISSING
+    student_mass_observation_enabled: bool = False
+    student_mass_bias_range_kg: tuple[float, float] = (0.0, 0.0)
+    student_no_object_true_mass_range_kg: tuple[float, float] = (0.8, 4.0)
 
 
 @configclass

@@ -14,13 +14,34 @@ Phase 2 and Phase 3 use the same static rank assignment:
 | 3-5 | Centered bar fixed to the right wrist (mirrored) |
 | 6-7 | Fixed-hand robot without a bar |
 
+The active-bar populations sample one absolute object mass uniformly from
+`[0.8, 4.0] kg` at every episode reset. The Phase-2 teacher receives the exact
+mass in its privileged observation. The Phase-3 student receives one mass
+scalar per observation frame: the true mass plus one episode-fixed additive
+uniform bias in `[-0.5, 0.5] kg`. This value is deliberately not clipped, so
+its full support is `[0.3, 4.5] kg`. No-object ranks sample the same latent
+mass-plus-bias distribution even though no physical bar is present.
+
+The current network widths are:
+
+| Network | Hidden widths |
+|---|---|
+| Phase-1 base actor and critic | `512, 256, 128` |
+| Phase-2 residual actor and critic | `512, 256, 256` |
+| Phase-3 student | `1024, 512, 256, 256` |
+| Phase-3 teacher base / residual | `512, 256, 128` / `512, 256, 256` |
+
+Phase 2 therefore keeps its `1310`-value actor and `1360`-value critic
+contracts. Phase 3 uses a `112`-value student frame over 25 frames (`2800`
+values total), while its privileged teacher remains `1310` values.
+
 ## Phase 1: locomotion
 
 ```bash
 torchrun --standalone --nproc_per_node=8 \
   legged_lab/scripts/train_locomotion.py \
   --task=cola_phase_1_locomotion \
-  --distributed --headless --num_envs=2048 --max_iterations=4000 \
+  --distributed --headless --num_envs=2048 --max_iterations=10000 \
   --logger=wandb --run_name=phase1_locomotion
 ```
 
@@ -28,7 +49,7 @@ Select the Phase-1 output for Phase 2:
 
 ```bash
 export PHASE1_RUN=/absolute/path/to/logs/cola_phase_1_locomotion/RUN_DIRECTORY
-export PHASE1_CHECKPOINT=model_3999.pt
+export PHASE1_CHECKPOINT=model_9999.pt
 ```
 
 ## Phase 2: collaboration teacher
